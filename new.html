@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Digital Oil lamp</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="style.css" rel="stylesheet" />
+    <link href="animation.css" rel="stylesheet" />
+    <link rel="preload" href="t-lamp.gif" as="image">
+
+    <style>
+        .lamp {
+            cursor: pointer;
+            max-width: 100%;
+            height: auto;
+            transition: transform 0.3s;
+        }
+
+        .lamp:hover {
+            transform: scale(1.05);
+        }
+
+        .lamp-container {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            animation: float 15s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.3;
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(0) rotate(360deg);
+                opacity: 0.3;
+            }
+        }
+
+        .celebration-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 215, 0, 0.9);
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 2rem;
+            color: #8B0000;
+            font-weight: bold;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1.05);
+                box-shadow: 0 0 50px rgba(255, 215, 0, 0.9);
+            }
+        }
+
+
+        /* Audio Controls */
+.audio-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.audio-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #4CAF50;
+    animation: pulse-audio 1.5s infinite;
+}
+
+.audio-indicator.muted {
+    background-color: #f44336;
+    animation: none;
+}
+
+@keyframes pulse-audio {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.audio-text {
+    font-weight: bold;
+}
+
+.audio-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
+}
+    </style>
+</head>
+
+<body>
+    <img class="background" src="background.jpg" alt="Background" />
+<!-- Audio Controls -->
+<div class="audio-controls" id="audioControls">
+    <div class="audio-indicator" id="audioIndicator"></div>
+    <span class="audio-text" id="audioStatus">Music: ON</span>
+</div>
+
+<div class="audio-hint">
+    Press <kbd>M</kbd> to toggle music
+</div>
+
+<!-- Audio Element -->
+<audio id="backgroundMusic" loop>
+    <!-- Add your music file here -->
+    <source src="music.mp3" type="audio/mpeg">
+
+    Your browser does not support the audio element.
+</audio>
+
+    <div class="container" style="align-items: center; height: 100%; margin-top: 50px; position: relative; z-index: 1;">
+        <!-- Hidden lamps (optional) -->
+        <div class="row hidelamps mb-4">
+            <div class="col-3 text-center">
+                <img src="lamptr.png" height="80" width="auto" alt="Hidden Lamp 1" />
+            </div>
+            <div class="col-3 text-center">
+                <img src="lamptr.png" height="80" width="auto" alt="Hidden Lamp 2" />
+            </div>
+            <div class="col-3 text-center">
+                <img src="lamptr.png" height="80" width="auto" alt="Hidden Lamp 3" />
+            </div>
+            <div class="col-3 text-center">
+                <img src="lamptr.png" height="80" width="auto" alt="Hidden Lamp 4" />
+            </div>
+        </div>
+
+        <!-- Dynamic lamps container -->
+        <div id="lampsContainer" class="lamps"></div>
+    </div>
+
+    <!-- Dynamic circles container (for background animation) -->
+    <div id="circlesContainer"></div>
+
+    <audio src="music.mp3" autoplay loop></audio>.
+
+    <script>
+        // Configuration
+        const getLampCount = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const lampsParam = parseInt(urlParams.get('lamps'));
+            return !isNaN(lampsParam) && lampsParam > 0 ? lampsParam : 12; // Default to 7
+        };
+
+        const TOTAL_LAMPS = getLampCount();
+        const CIRCLE_COUNT = 50; // Reduced for better performance
+        const lampStates = new Array(TOTAL_LAMPS).fill(0);
+
+        // Get lamps per row based on screen width
+        const getLampsPerRow = () => {
+            const width = window.innerWidth;
+            if (width >= 1200) return 4; // Large screens
+            if (width >= 768) return 3;  // Medium screens
+            return 2;                    // Small screens
+        };
+
+        // Generate Bootstrap column class
+        const getColumnClass = (lampsPerRow) => {
+            const cols = Math.floor(12 / lampsPerRow);
+            return `col-${cols > 0 ? cols : 12}`;
+        };
+
+        // Create a single lamp element
+        const createLampElement = (index) => {
+            const lampDiv = document.createElement('div');
+            lampDiv.className = 'lamp-container';
+
+            const lampImg = document.createElement('img');
+            lampImg.id = `lamp${index + 1}`;
+            lampImg.className = 'lamp';
+            lampImg.src = 'lamp.png';
+            lampImg.alt = `Lamp ${index + 1}`;
+            lampImg.style.height = '120px';
+            lampImg.style.width = 'auto';
+
+            // Add click event
+            lampImg.addEventListener('click', () => toggleLamp(index));
+
+            lampDiv.appendChild(lampImg);
+            return lampDiv;
+        };
+
+        // Generate all lamps
+        const generateLamps = () => {
+            const container = document.getElementById('lampsContainer');
+            container.innerHTML = '';
+
+            const lampsPerRow = getLampsPerRow();
+            const colClass = getColumnClass(lampsPerRow);
+
+            let currentRow;
+
+            for (let i = 0; i < TOTAL_LAMPS; i++) {
+                // Start new row if needed
+                if (i % lampsPerRow === 0) {
+                    currentRow = document.createElement('div');
+                    currentRow.className = 'row justify-content-center mb-4';
+                    container.appendChild(currentRow);
+                }
+
+                const colDiv = document.createElement('div');
+                colDiv.className = `${colClass} text-center`;
+                colDiv.appendChild(createLampElement(i));
+                currentRow.appendChild(colDiv);
+            }
+
+            console.log(`Generated ${TOTAL_LAMPS} lamps in ${Math.ceil(TOTAL_LAMPS / lampsPerRow)} rows`);
+        };
+
+        // Generate background circles with animation
+        const generateCircles = () => {
+            const container = document.getElementById('circlesContainer');
+            container.innerHTML = '';
+
+            // Style the container
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            container.style.pointerEvents = 'none';
+            container.style.zIndex = '-1';
+            container.style.overflow = 'hidden';
+
+            for (let i = 0; i < CIRCLE_COUNT; i++) {
+                const circle = document.createElement('div');
+                circle.className = 'circle';
+
+                // Random size between 20px and 100px
+                const size = Math.random() * 80 + 20;
+                circle.style.width = `${size}px`;
+                circle.style.height = `${size}px`;
+
+                // Random position
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                circle.style.left = `${left}%`;
+                circle.style.top = `${top}%`;
+
+                // Random animation delay and duration
+                const delay = Math.random() * 5;
+                const duration = 10 + Math.random() * 20;
+                circle.style.animationDelay = `${delay}s`;
+                circle.style.animationDuration = `${duration}s`;
+
+                // Random opacity
+                circle.style.opacity = Math.random() * 0.3 + 0.1;
+
+                // Random color variation
+                const hue = Math.random() * 60 + 30; // Yellow to orange range
+                circle.style.background = `radial-gradient(circle, hsla(${hue}, 100%, 70%, 0.8) 0%, hsla(${hue}, 100%, 70%, 0) 70%)`;
+
+                container.appendChild(circle);
+            }
+
+            console.log(`Generated ${CIRCLE_COUNT} animated circles`);
+        };
+
+        // Toggle lamp state
+        const toggleLamp = (index) => {
+            const lampId = `lamp${index + 1}`;
+            const lamp = document.getElementById(lampId);
+
+            if (!lamp) return;
+
+            const isLit = lamp.src.includes('t-lamp.gif');
+
+            if (isLit) {
+                lamp.src = 'lamp.png';
+                lampStates[index] = 0;
+                // Hide celebration message if showing
+                document.getElementById('celebrationMessage').style.display = 'none';
+            } else {
+                lamp.src = 't-lamp.gif';
+                lampStates[index] = 1;
+
+                // Check if all lamps are lit
+                if (lampStates.every(state => state === 1)) {
+                    showCelebration();
+                }
+            }
+        };
+
+        // Show celebration message (no redirect)
+        const showCelebration = () => {
+            const message = document.getElementById('celebrationMessage');
+            message.style.display = 'None';
+
+            // Optional: Add confetti or other celebration effects
+            console.log('🎉 CC rules 🎉');
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 5000);
+        };
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log(`Generating ${TOTAL_LAMPS} lamps...`);
+
+            // Generate lamps and circles
+            generateLamps();
+            generateCircles();
+
+            // Update layout on window resize
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(generateLamps, 250);
+            });
+
+            // Make sure images are loaded properly
+            const lamps = document.querySelectorAll('.lamp');
+            lamps.forEach((lamp, index) => {
+                lamp.onerror = function() {
+                    console.error(`Failed to load image for lamp ${index + 1}`);
+                    // Create a fallback lamp using CSS
+                    this.style.backgroundColor = '#ffcc00';
+                    this.style.borderRadius = '50%';
+                    this.style.boxShadow = '0 0 20px #ffcc00';
+                    this.style.display = 'inline-block';
+                    this.style.width = '120px';
+                    this.style.height = '120px';
+                    this.alt = 'Lamp (fallback)';
+                };
+            });
+        });
+
+
+
+    </script>
+
+<script>
+    // Audio variables (add these at the top with other variables)
+let isAudioPlaying = true;
+const audioElement = document.getElementById('backgroundMusic');
+const audioIndicator = document.getElementById('audioIndicator');
+const audioStatus = document.getElementById('audioStatus');
+const audioControls = document.getElementById('audioControls');
+
+// Audio Functions
+const toggleAudio = () => {
+    if (isAudioPlaying) {
+        // Pause the audio
+        audioElement.pause();
+        audioIndicator.classList.add('muted');
+        audioStatus.textContent = 'Music: OFF';
+        isAudioPlaying = false;
+    } else {
+        // Play the audio
+        audioElement.play().catch(error => {
+            console.log('Audio play failed:', error);
+            // If autoplay is blocked, show a message
+            audioControls.innerHTML = '<span style="color: #ff9800;">Click to enable audio</span>';
+            audioControls.style.cursor = 'pointer';
+            audioControls.onclick = () => {
+                audioElement.play();
+                initAudioControls();
+            };
+        });
+        audioIndicator.classList.remove('muted');
+        audioStatus.textContent = 'Music: ON';
+        isAudioPlaying = true;
+    }
+};
+
+const initAudioControls = () => {
+    // Set initial audio state
+    audioElement.volume = 0.5; // 50% volume
+    audioElement.loop = true;
+
+    // Try to play audio automatically
+    audioElement.play().then(() => {
+        console.log('Audio started successfully');
+        isAudioPlaying = true;
+        audioIndicator.classList.remove('muted');
+        audioStatus.textContent = 'Music: ON';
+    }).catch(error => {
+        console.log('Autoplay was prevented:', error);
+        // Audio will start on first user interaction
+        isAudioPlaying = false;
+        audioIndicator.classList.add('muted');
+        audioStatus.textContent = 'Music: OFF (Click M)';
+    });
+};
+
+// In your DOMContentLoaded event listener, add these lines:
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing initialization code ...
+
+    // Initialize audio
+    initAudioControls();
+
+    // Add keyboard event listener for 'M' key
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'm' || event.key === 'M') {
+            toggleAudio();
+            event.preventDefault(); // Prevent default behavior
+        }
+    });
+
+    // Add click event to audio controls
+    audioControls.addEventListener('click', toggleAudio);
+
+    // ... rest of your existing code ...
+
+    // Add first click event to start audio if needed
+    document.addEventListener('click', function startAudioOnFirstClick() {
+        if (!isAudioPlaying && audioElement.paused) {
+            audioElement.play().then(() => {
+                isAudioPlaying = true;
+                audioIndicator.classList.remove('muted');
+                audioStatus.textContent = 'Music: ON';
+            });
+        }
+        // Remove this listener after first click
+        document.removeEventListener('click', startAudioOnFirstClick);
+    }, { once: true });
+});
+</script>
+</body>
+</html>

@@ -43,6 +43,7 @@
             overflow-x: hidden;
             min-height: 100vh;
             position: relative;
+            background-color: black;
         }
 
         .circle {
@@ -153,7 +154,7 @@
 </head>
 
 <body>
-    <img class="background" src="background.jpg" alt="Background" />
+<!--    <img class="background" src="background.jpg" alt="Background" />-->
 <!-- Audio Controls -->
 <div class="audio-controls" id="audioControls">
     <div class="audio-indicator" id="audioIndicator"></div>
@@ -199,6 +200,49 @@
     <audio src="music.mp3" autoplay loop></audio>.
 
     <script>
+
+        let currentHash = window.location.hash;
+let pollInterval;
+
+const updateLampsFromHash = () => {
+    const hash = window.location.hash;
+
+    // If hash changed
+    if (hash !== currentHash) {
+        currentHash = hash;
+
+        // Parse hash like: #lamps=1,0,1,0...
+        if (hash.startsWith('#lamps=')) {
+            const statesString = hash.substring(7); // Remove '#lamps='
+            const states = statesString.split(',').map(Number);
+
+            states.forEach((state, index) => {
+                if (index < TOTAL_LAMPS && lampStates[index] !== state) {
+                    lampStates[index] = state;
+                    const lamp = document.getElementById(`lamp${index + 1}`);
+                    if (lamp) {
+                        lamp.src = state === 1 ? 't-lamp.gif' : 'lamp.png';
+                    }
+                }
+            });
+
+            if (lampStates.every(state => state === 1)) {
+                showCelebration();
+            }
+        }
+    }
+};
+
+// Start polling for URL changes
+const startPolling = () => {
+    pollInterval = setInterval(updateLampsFromHash, 1000); // Check every second
+};
+
+// Stop polling (optional)
+const stopPolling = () => {
+    clearInterval(pollInterval);
+};
+
         // Configuration
         const getLampCount = () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -366,6 +410,7 @@
             // Generate lamps and circles
             generateLamps();
             generateCircles();
+            startPolling();
 
             // Update layout on window resize
             let resizeTimeout;

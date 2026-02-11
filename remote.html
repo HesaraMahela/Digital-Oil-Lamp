@@ -1,10 +1,166 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <title>Async Lamp Control</title>
+    <style>
+        .lamp-btn {
+            width: 40px;
+            height: 40px;
+            margin: 5px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .lamp-off { background: #666; }
+        .lamp-on {
+            background: #ffcc00;
+            box-shadow: 0 0 20px #ffcc00;
+        }
+        .status {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-$END$
+    <h1>Async Lamp Control Panel</h1>
+
+    <div id="lampGrid"></div>
+
+    <div class="status" id="status">
+        Click lamps to toggle. Changes update in real-time!
+    </div>
+
+    <div>
+        <button onclick="openLampSite()">Open Lamp Site</button>
+        <button onclick="allOn()">All On</button>
+        <button onclick="allOff()">All Off</button>
+        <button onclick="generateLink()">Get Share Link</button>
+    </div>
+
+    <div id="linkOutput" style="margin-top: 20px;"></div>
+
+    <script>
+        const LAMP_COUNT = 12;
+        let lampStates = new Array(LAMP_COUNT).fill(0);
+        let lampWindow = null;
+
+        // Create lamp grid
+        function createLampGrid() {
+            const grid = document.getElementById('lampGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < LAMP_COUNT; i++) {
+                const btn = document.createElement('button');
+                btn.className = `lamp-btn ${lampStates[i] ? 'lamp-on' : 'lamp-off'}`;
+                btn.onclick = () => toggleLamp(i);
+                btn.title = `Lamp ${i + 1}`;
+                grid.appendChild(btn);
+            }
+        }
+
+        // Toggle single lamp
+        function toggleLamp(index) {
+            lampStates[index] = lampStates[index] ? 0 : 1;
+            updateLampDisplay();
+            updateRemoteLamps();
+        }
+
+        // Update local display
+        function updateLampDisplay() {
+            const buttons = document.querySelectorAll('.lamp-btn');
+            buttons.forEach((btn, index) => {
+                btn.className = `lamp-btn ${lampStates[index] ? 'lamp-on' : 'lamp-off'}`;
+            });
+
+            // Update status
+            const litCount = lampStates.filter(s => s === 1).length;
+            document.getElementById('status').textContent =
+                `${litCount} of ${LAMP_COUNT} lamps lit`;
+        }
+
+        // Update remote lamps
+        function updateRemoteLamps() {
+            if (!lampWindow || lampWindow.closed) return;
+
+            // Method 1: Using hash (async, no reload)
+            const statesString = lampStates.join(',');
+            lampWindow.location.hash = `lamps=${statesString}`;
+
+            // Method 2: Using postMessage
+            // lampWindow.postMessage({
+            //     type: 'updateLamps',
+            //     states: lampStates
+            // }, '*'); // Use specific origin for security
+        }
+
+        // Open lamp site
+        function openLampSite() {
+            const baseUrl = 'https://custom-digital-oil-lamp.netlify.app/';
+            lampWindow = window.open(baseUrl, 'lampWindow');
+
+            // Wait a bit then send initial state
+            setTimeout(() => {
+                updateRemoteLamps();
+            }, 1000);
+        }
+
+        // Control functions
+        function allOn() {
+            lampStates.fill(1);
+            updateLampDisplay();
+            updateRemoteLamps();
+        }
+
+        function allOff() {
+            lampStates.fill(0);
+            updateLampDisplay();
+            updateRemoteLamps();
+        }
+
+        function generateLink() {
+            const statesString = lampStates.join(',');
+            const link = `https://custom-digital-oil-lamp.netlify.app/#lamps=${statesString}`;
+
+            document.getElementById('linkOutput').innerHTML = `
+                <strong>Real-time link:</strong><br>
+                <input type="text" value="${link}" style="width: 80%;" readonly>
+                <button onclick="copyLink()">Copy</button>
+                <br><small>Anyone opening this link will see current lamp states</small>
+            `;
+        }
+
+        function copyLink() {
+            const input = document.querySelector('#linkOutput input');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            alert('Link copied!');
+        }
+
+        // Auto-update link when lamps change
+        let linkTimeout;
+        function scheduleLinkUpdate() {
+            clearTimeout(linkTimeout);
+            linkTimeout = setTimeout(() => {
+                if (document.getElementById('linkOutput').innerHTML) {
+                    generateLink();
+                }
+            }, 500);
+        }
+
+        // Initialize
+        createLampGrid();
+        updateLampDisplay();
+
+        // Auto-generate link when lamps change
+        const originalToggle = toggleLamp;
+        toggleLamp = function(index) {
+            originalToggle(index);
+            scheduleLinkUpdate();
+        };
+    </script>
 </body>
 </html>

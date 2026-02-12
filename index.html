@@ -139,9 +139,9 @@
     <span class="audio-text" id="audioStatus">Music: ON</span>
 </div>
 
-<div class="audio-hint">
-    Press <kbd>M</kbd> to toggle music
-</div>
+<!--<div class="audio-hint">-->
+<!--    Press <kbd>M</kbd> to toggle music-->
+<!--</div>-->
 
 <!-- Keyboard Hint: now includes laser pointer keys -->
 <!--<div class="keyboard-hint">-->
@@ -359,7 +359,7 @@
         document.addEventListener('keydown', (event) => {
             const key = event.key;
             // Act on keys typically found on presentation remotes / laser pointers
-            if (key === 'ArrowUp' || key === 'PageUp' || key === 'PageDown' || key === 'l' || key === 'L') {
+            if (key === 'ArrowUp' || key === 'PageUp'  || key === 'l' || key === 'L') {
                 event.preventDefault();  // Prevent scrolling or page change
                 lightNextLamp();
             }
@@ -367,7 +367,7 @@
 
         // Music toggle with 'M'
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'm' || event.key === 'M') {
+            if (event.key === 'm' || event.key === 'M' || event.key === 'PageDown') {
                 toggleAudio();
                 event.preventDefault();
             }
